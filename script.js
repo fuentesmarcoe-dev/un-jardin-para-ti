@@ -1,0 +1,34 @@
+"use strict";
+const config = window.GARDEN_CONFIG || {};
+const ns = "http://www.w3.org/2000/svg";
+const petals = (cx,cy,r=1) => {let s='';for(let i=0;i<12;i++){s+=`<ellipse cx="${cx}" cy="${cy-28*r}" rx="${12*r}" ry="${31*r}" fill="url(#petal)" stroke="#edb537" stroke-width=".5" transform="rotate(${i*30} ${cx} ${cy})"/>`;}return s+`<circle cx="${cx}" cy="${cy}" r="${16*r}" fill="url(#heart)"/><circle cx="${cx-4*r}" cy="${cy-5*r}" r="${4*r}" fill="#d7a83b" opacity=".6"/>`;};
+const defs = `<defs><linearGradient id="petal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffed91"/><stop offset=".45" stop-color="#fbd149"/><stop offset="1" stop-color="#d69a23"/></linearGradient><radialGradient id="heart"><stop stop-color="#615027"/><stop offset=".7" stop-color="#8e6b28"/><stop offset="1" stop-color="#bd8e2d"/></radialGradient><linearGradient id="leaf"><stop stop-color="#718751"/><stop offset="1" stop-color="#284d36"/></linearGradient></defs>`;
+const flowers=[[155,199,.78],[344,203,.85],[222,115,.96],[299,112,.7],[102,288,.72],[379,285,.72],[233,253,1.08],[297,315,.76],[185,350,.68]];
+let drawing=defs;
+flowers.forEach(([x,y,r],i)=>{drawing+=`<g class="stem-group" style="--delay:-${i*.7}s"><path d="M250 505 Q${x+25} 380 ${x} ${y}" fill="none" stroke="#68804c" stroke-width="${3+r}"/><path d="M${(250+x)/2} 395 Q${x-65} 350 ${x-49} 312 Q${x+10} 319 ${(250+x)/2} 395" fill="url(#leaf)"/><path d="M${(250+x)/2} 410 Q${x+95} 350 ${x+84} 328 Q${x+30} 329 ${(250+x)/2} 410" fill="url(#leaf)"/>${petals(x,y,r)}</g>`;});
+drawing+=`<path d="M231 460 Q252 470 268 460 M234 470 Q251 480 265 469" stroke="#d3b968" stroke-width="3" fill="none"/><path d="M247 468 Q200 440 202 465 Q204 486 247 468 Q299 442 291 466 Q284 487 247 468 M247 468 Q226 501 218 504 M250 469 Q277 497 281 514" fill="none" stroke="#e0c681" stroke-width="2"/>`;
+document.querySelector('#bouquet').innerHTML=`<svg xmlns="${ns}" viewBox="0 0 500 540" aria-hidden="true">${drawing}</svg>`;
+document.querySelectorAll('.mini-flower').forEach(el=>{el.innerHTML=`<svg viewBox="0 0 120 130" aria-hidden="true"><path d="M60 120 Q50 85 60 55" stroke="#85945b" stroke-width="3" fill="none"/><path d="M57 99 Q18 95 26 76 Q51 77 57 99 M56 105 Q95 94 90 80 Q67 81 56 105" fill="#8b9a60"/>${petals(60,48,.67)}</svg>`;});
+const letter=document.querySelector('#letter-text');(config.carta||[]).forEach(text=>{const p=document.createElement('p');p.textContent=text;letter.append(p);});
+document.querySelector('#signature').textContent=config.firma||'Con aprecio';
+const wishes=[['Para tus sueños','Que cada lectura, cada desvelo y cada paso te acerquen a la profesional que quieres ser. Que tu voz encuentre siempre buenas causas que defender.'],['Para tus días','Que nunca te falten una conversación bonita, una risa inesperada y un momento de calma. También se vale descansar y disfrutar del camino.'],['Para lo que viene','Que lleguen oportunidades que te ilusionen, personas que te hagan bien y alegrías que todavía no imaginas. A tu ritmo, también se florece.']];
+const dialog=document.querySelector('#wish-dialog');dialog.setAttribute('aria-labelledby','wish-title');dialog.setAttribute('aria-describedby','wish-text');
+document.querySelectorAll('.wish').forEach(btn=>btn.addEventListener('click',()=>{const [title,text]=wishes[Number(btn.dataset.wish)];document.querySelector('#wish-title').textContent=title;document.querySelector('#wish-text').textContent=text;dialog.showModal();}));
+document.querySelectorAll('.close,.close-wish').forEach(btn=>btn.addEventListener('click',()=>dialog.close()));
+dialog.addEventListener('click',event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();}});
+const audio=document.querySelector('#audio'),play=document.querySelector('#play'),seek=document.querySelector('#seek'),status=document.querySelector('#music-status');
+const music=config.musica||{};
+const format=seconds=>Number.isFinite(seconds)?`${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`:'0:00';
+audio.volume=.65;
+if(music.archivo){audio.src=music.archivo;play.disabled=false;document.querySelector('#song-name').textContent=music.titulo||'Una canción para ti';document.querySelector('#song-artist').textContent=music.artista||'';status.textContent='Dale play cuando quieras. Este momento es tuyo.';}
+if(music.dedicatoria)document.querySelector('#song-caption').textContent=music.dedicatoria;
+play.addEventListener('click',async()=>{if(!audio.paused){audio.pause();return;}try{await audio.play();}catch{status.textContent='No pudimos reproducir la canción. Puedes intentarlo otra vez.';}});
+function playerState(){const active=!audio.paused&&!audio.ended;play.textContent=active?'Ⅱ':'▶';play.setAttribute('aria-label',active?'Pausar canción':'Reproducir canción');document.body.classList.toggle('playing',active);if(active)status.textContent='Que esta canción te acompañe un ratito.';}
+['play','pause','ended'].forEach(event=>audio.addEventListener(event,playerState));
+audio.addEventListener('loadedmetadata',()=>{document.querySelector('#duration').textContent=format(audio.duration);seek.disabled=!Number.isFinite(audio.duration);});
+audio.addEventListener('timeupdate',()=>{document.querySelector('#current').textContent=format(audio.currentTime);seek.value=Number.isFinite(audio.duration)&&audio.duration>0?audio.currentTime/audio.duration*100:0;});
+seek.addEventListener('input',()=>{if(Number.isFinite(audio.duration))audio.currentTime=Number(seek.value)/100*audio.duration;});
+document.querySelector('#volume').addEventListener('input',e=>audio.volume=Number(e.target.value));
+audio.addEventListener('error',()=>{status.textContent='La canción no está disponible en este momento. Las flores siguen siendo para ti.';play.disabled=true;seek.disabled=true;document.body.classList.remove('playing');});
+let blooming=false;
+document.querySelector('#bloom').addEventListener('click',()=>{document.querySelector('#bloom-status').textContent='Un jardín entero de buenos deseos para ti, Coraima.';if(blooming||matchMedia('(prefers-reduced-motion: reduce)').matches)return;blooming=true;for(let i=0;i<45;i++){const petal=document.createElement('span');petal.className='petal';petal.setAttribute('aria-hidden','true');petal.style.left=`${Math.random()*95}vw`;petal.style.setProperty('--duration',`${3+Math.random()*3}s`);petal.style.setProperty('--drift',`${Math.random()*100-50}px`);petal.style.animationDelay=`${Math.random()*.9}s`;document.body.append(petal);petal.addEventListener('animationend',()=>petal.remove(),{once:true});}setTimeout(()=>{blooming=false;document.querySelectorAll('.petal').forEach(el=>el.remove());},7500);});
